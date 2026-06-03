@@ -69,6 +69,9 @@ StaticJsonDocument<512> jsonInfoHttp;
 // 导航PID控制：根据当前坐标和目标坐标，通过PID驱动车辆向目标行驶
 #include "nav_pid_ctrl.h"
 
+// LinkTrack UWB定位：通过Serial2接收TAG坐标，自动注入导航PID
+#include "linktrack_ctrl.h"
+
 // functions for http & web server.
 #include "http_server.h"
 
@@ -208,6 +211,10 @@ void setup() {
   if(InfoPrint == 1){Serial.println("ESP-NOW init.");}
   initEspNow();
 
+  screenLine_3 = "LinkTrack init";
+  oled_update();
+  initLinkTrack();
+
   screenLine_3 = "UGV started";
   oled_update();
   if(InfoPrint == 1){Serial.println("UGV started.");}
@@ -233,6 +240,7 @@ void setup() {
 
 void loop() {
   serialCtrl();
+  updateLinkTrack();   // 接收并解析 LinkTrack UWB 定位数据
   server.handleClient();
 
   // read and compute the info of joints.
