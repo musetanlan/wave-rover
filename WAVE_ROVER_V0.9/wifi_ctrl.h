@@ -39,7 +39,7 @@ const char* sta_ssid = "none";
 const char* sta_password = "none";
 
 // AP 模式（自身热点）的 SSID 和密码，默认热点名为 "UGV"，密码 "12345678"
-const char* ap_ssid = "UGV";
+const char* ap_ssid = "ugv374041";
 const char* ap_password = "12345678";
 
 // 当首次 STA 连接成功后，是否自动将 WIFI_MODE_ON_BOOT 改为 3（AP+STA）
