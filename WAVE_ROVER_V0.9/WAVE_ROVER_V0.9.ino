@@ -69,8 +69,9 @@ StaticJsonDocument<512> jsonInfoHttp;
 // 导航PID控制：根据当前坐标和目标坐标，通过PID驱动车辆向目标行驶
 #include "nav_pid_ctrl.h"
 
-// LinkTrack UWB定位：通过Serial2接收TAG坐标，自动注入导航PID
-#include "linktrack_ctrl.h"
+// LinkTrack P_AS2 UWB定位：通过Serial2接收TAG坐标，自动注入导航PID
+// 支持 TAG_Frame0 / NODE_FRAME2 双协议，可选FreeRTOS任务模式，主动LP_MODE0配置
+#include "linktrack_p_as2.h"
 
 // functions for http & web server.
 #include "http_server.h"
