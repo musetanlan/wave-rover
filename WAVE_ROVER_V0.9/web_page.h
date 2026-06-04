@@ -1,3 +1,47 @@
+/**
+ * ============================================================
+ * web_page.h — UGV 控制面板 Web 页面
+ * ============================================================
+ *
+ * 【文件说明】
+ *   本文件包含 WAVE ROVER UGV 的完整 Web 控制面板 HTML 页面，
+ *   以 PROGMEM 原始字符串字面量形式存储在 ESP32 Flash 中，
+ *   通过 HTTP Server (http_server.h) 提供给浏览器访问。
+ *
+ * 【关于 VS Code 中的橙色显示】
+ *   VS Code 的 C++ 语法高亮会将 R"rawliteral(...)rawliteral"
+ *   原始字符串内的所有内容（包括 HTML/CSS/JS 及其注释）识别为
+ *   字符串字面量，因此全部显示为橙色。这不影响编译和运行。
+ *   本文件在 C++ 层面添加的 // 注释会正常显示为绿色。
+ *
+ * 【页面结构】
+ *   1. CSS 样式        — 深色主题、响应式布局（桌面/平板/手机）
+ *   2. HTML 设备信息    — 电压/RSSI/IMU/IP/MAC 实时数据显示
+ *   3. HTML 运动控制    — 方向键按钮（前进/后退/左转/右转/停止）
+ *   4. HTML 云台控制    — 上下左右/增稳/速度档位/LED 开关
+ *   5. HTML JSON 指令   — 各类指令模板与快捷输入按钮
+ *   6. HTML 导航 PID    — 目标坐标输入、状态显示、里程计归零
+ *   7. JavaScript      — AJAX 通信、键盘控制、定时轮询、导航交互
+ *
+ * 【数据流】
+ *   浏览器 ←→ HTTP GET "/js?json=..." ←→ ESP32 WebServer
+ *          ←→ 串口 JSON 命令系统 (uart_ctrl.h)
+ *   页面通过 infoUpdate() 定时轮询获取设备状态
+ *   键盘 WASD/方向键 → movtionButton() → JSON 速度指令
+ *
+ * 【响应式断点】
+ *   >=1200px: 桌面布局 (960px 主容器, 左右双栏)
+ *   768-1199px: 平板布局 (单栏, 扩大点击区域)
+ *   360-767px: 手机布局 (紧凑排版, 缩小圆形按钮)
+ *
+ * 【依赖】
+ *   - http_server.h: 提供 WebServer 对象，注册本页面的路由
+ *   - uart_ctrl.h: 处理浏览器发来的 JSON 指令
+ *   - nav_pid_ctrl.h: 提供导航 PID 状态反馈
+ * ============================================================
+ */
+
+// ==================== 第1段：CSS 样式（深色主题 + 响应式布局）====================
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
@@ -246,6 +290,13 @@ const char index_html[] PROGMEM = R"rawliteral(
         .controlor > div{margin: 40px 0;}
     }
     </style>
+)rawliteral"
+
+// ==================== 第2段：HTML 主体 — 设备信息面板 & 运动控制 ====================
+// 包含：电压/RSSI、IMU姿态角(ROLL/PITCH/YAW)、云台角度(PAN/TILT)、IP/MAC、
+//       方向键运动控制(前进/后退/左转/右转/停止)、云台方向按钮、
+//       增稳开关、速度档位(SLOW/MIDDLE/FAST)、LED 开关(IO4/IO5)
+R"rawliteral(
 </head>
 <body>
     <main>
@@ -376,6 +427,13 @@ const char index_html[] PROGMEM = R"rawliteral(
                 </div>
             </div>
         </section>
+)rawliteral"
+
+// ==================== 第3段：HTML — JSON 指令面板 & 导航 PID 面板 ====================
+// 包含：反馈信息显示区、JSON 指令输入框、各类指令模板按钮
+//       (速度/PWM/ROS/PID/OLED/模块类型/IMU/反馈/云台/速度比率/
+//        任务/ESP-NOW/WiFi/舵机/系统)、导航 PID 目标输入与控制面板
+R"rawliteral(
         <section>
             <div class="fb-info">
                 <h2 class="h2-tt" id="deviceInfo">Feedback infomation</h2>
@@ -653,6 +711,15 @@ const char index_html[] PROGMEM = R"rawliteral(
             </div>
         </section>
     </main>
+)rawliteral"
+
+// ==================== 第4段：JavaScript — 主控制逻辑 ====================
+// 包含：全局状态变量、定时轮询(infoUpdate/getDevInfo/heartBeat)、
+//       JSON 指令发送(jsonSend/cmdFill)、速度控制(changeSpeed)、
+//       运动控制(movtionButton/heartBeat)、LED 控制(ledCtrl)、
+//       云台控制(gimbalCtrl/gimbalSteady)、键盘事件处理(WASD/方向键)、
+//       复合方向逻辑(cmdProcess)
+R"rawliteral(
 <script>
     var cmdA;
     var cmdB;
@@ -1079,6 +1146,12 @@ const char index_html[] PROGMEM = R"rawliteral(
         last_lrNewer = lrNewer;
     }
 
+)rawliteral"
+
+// ==================== 第5段：JavaScript — 导航 PID 控制函数 ====================
+// 包含：navSetTarget()发送目标坐标、navStop()停止导航、
+//       navResetOdom()里程计归零、navGetStatus()查询导航状态
+R"rawliteral(
     // ====== 导航PID控制函数 ======
     function navSetTarget() {
         var tx = parseFloat(document.getElementById("navTargetX").value) || 0;
