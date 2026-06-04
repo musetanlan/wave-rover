@@ -1,0 +1,41 @@
+{
+  "configurations": [
+    {
+      "name": "ESP32",
+      "includePath": [
+        "${workspaceFolder}/WAVE_ROVER_V0.9",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/cores/esp32",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/variants/esp32",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/libraries/Wire/src",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/libraries/SPI/src",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/libraries/EEPROM/src",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/libraries/WiFi/src",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/libraries/WebServer/src",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/libraries/HTTPClient/src",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/libraries/ESPmDNS/src",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/libraries/Update/src",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/libraries/FS/src",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/libraries/LittleFS/src",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/libraries/SD/src",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/libraries/ESP_NOW/src",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/hardware/esp32/2.0.17/libraries/BluetoothSerial/src",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/xtensa-esp32-elf/include/c++/8.4.0",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/xtensa-esp32-elf/include/c++/8.4.0/xtensa-esp32-elf",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/xtensa-esp32-elf/include",
+        "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/lib/gcc/xtensa-esp32-elf/8.4.0/include"
+      ],
+      "defines": [
+        "ARDUINO=10819",
+        "ESP32",
+        "F_CPU=240000000L",
+        "ARDUINO_VARIANT=\"esp32\"",
+        "ARDUINO_BOARD=\"ESP32_DEV\""
+      ],
+      "compilerPath": "C:/Users/qiuzehao/AppData/Local/Arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/esp-2021r2-patch5-8.4.0/bin/xtensa-esp32-elf-g++.exe",
+      "cStandard": "c11",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "gcc-x86"
+    }
+  ],
+  "version": 4
+}

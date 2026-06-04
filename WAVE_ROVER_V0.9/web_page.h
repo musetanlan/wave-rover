@@ -41,7 +41,12 @@
  * ============================================================
  */
 
-// ==================== 第1段：CSS 样式（深色主题 + 响应式布局）====================
+// ==================== Web 页面内容结构 ====================
+//   第1段：CSS 样式（深色主题 + 响应式布局）
+//   第2段：HTML — 设备信息面板 & 运动控制
+//   第3段：HTML — JSON 指令面板 & 导航 PID 面板
+//   第4段：JavaScript — 主控制逻辑
+//   第5段：JavaScript — 导航 PID 控制函数
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
@@ -290,13 +295,6 @@ const char index_html[] PROGMEM = R"rawliteral(
         .controlor > div{margin: 40px 0;}
     }
     </style>
-)rawliteral"
-
-// ==================== 第2段：HTML 主体 — 设备信息面板 & 运动控制 ====================
-// 包含：电压/RSSI、IMU姿态角(ROLL/PITCH/YAW)、云台角度(PAN/TILT)、IP/MAC、
-//       方向键运动控制(前进/后退/左转/右转/停止)、云台方向按钮、
-//       增稳开关、速度档位(SLOW/MIDDLE/FAST)、LED 开关(IO4/IO5)
-R"rawliteral(
 </head>
 <body>
     <main>
@@ -427,13 +425,6 @@ R"rawliteral(
                 </div>
             </div>
         </section>
-)rawliteral"
-
-// ==================== 第3段：HTML — JSON 指令面板 & 导航 PID 面板 ====================
-// 包含：反馈信息显示区、JSON 指令输入框、各类指令模板按钮
-//       (速度/PWM/ROS/PID/OLED/模块类型/IMU/反馈/云台/速度比率/
-//        任务/ESP-NOW/WiFi/舵机/系统)、导航 PID 目标输入与控制面板
-R"rawliteral(
         <section>
             <div class="fb-info">
                 <h2 class="h2-tt" id="deviceInfo">Feedback infomation</h2>
@@ -711,15 +702,6 @@ R"rawliteral(
             </div>
         </section>
     </main>
-)rawliteral"
-
-// ==================== 第4段：JavaScript — 主控制逻辑 ====================
-// 包含：全局状态变量、定时轮询(infoUpdate/getDevInfo/heartBeat)、
-//       JSON 指令发送(jsonSend/cmdFill)、速度控制(changeSpeed)、
-//       运动控制(movtionButton/heartBeat)、LED 控制(ledCtrl)、
-//       云台控制(gimbalCtrl/gimbalSteady)、键盘事件处理(WASD/方向键)、
-//       复合方向逻辑(cmdProcess)
-R"rawliteral(
 <script>
     var cmdA;
     var cmdB;
@@ -1146,12 +1128,6 @@ R"rawliteral(
         last_lrNewer = lrNewer;
     }
 
-)rawliteral"
-
-// ==================== 第5段：JavaScript — 导航 PID 控制函数 ====================
-// 包含：navSetTarget()发送目标坐标、navStop()停止导航、
-//       navResetOdom()里程计归零、navGetStatus()查询导航状态
-R"rawliteral(
     // ====== 导航PID控制函数 ======
     function navSetTarget() {
         var tx = parseFloat(document.getElementById("navTargetX").value) || 0;
