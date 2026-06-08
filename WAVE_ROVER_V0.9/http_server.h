@@ -4,7 +4,7 @@
 WebServer server(80);
 
 void handleRoot(){
-  server.send(200, "text/html", index_html); //Send web page
+  server.send(200, "text/html; charset=utf-8", index_html); //Send web page
 }
 
 void webCtrlServer(){

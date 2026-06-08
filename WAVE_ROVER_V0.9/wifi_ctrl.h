@@ -501,5 +501,15 @@ void wifiStatusFeedback() {
  */
 void initWifi() {
 	loadWifiConfig();
+	// 检测并修复旧版配置文件：如果AP名称仍是旧默认值"UGV"，强制更新为新默认值
+	if (String(ap_ssid) == "UGV" && String(ap_ssid) != "UGV374041") {
+		ap_ssid = "UGV374041";
+		ap_password = "12345678";
+		WIFI_MODE_ON_BOOT = 1;
+		createWifiConfigFileByStatus();
+		if (InfoPrint >= 1) {
+			Serial.println("[WiFi] 检测到旧版配置，已自动更新为 UGV374041");
+		}
+	}
 	wifiModeOnBoot();
 }
