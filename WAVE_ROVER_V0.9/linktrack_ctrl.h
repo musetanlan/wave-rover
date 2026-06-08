@@ -29,6 +29,7 @@
 #define LINKTRACK_CTRL_H
 
 #include <Arduino.h>
+#include "nav_pid_ctrl.h"
 
 // ==================== UART 配置 ====================
 // Serial2 引脚定义

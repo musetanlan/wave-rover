@@ -1,5 +1,6 @@
 // advance funcs for RoArm-M2 ctrl
 // place holder.
+#include "linktrack_p_as2.h"
 void jsonCmdReceiveHandler();
 bool moveToStep(String inputName, int inputStepNum);
 
@@ -407,6 +408,14 @@ void baseInfoFeedback() {
 	jsonInfoHttp["nav_tx"] = nav_target_x;
 	jsonInfoHttp["nav_ty"] = nav_target_y;
 	jsonInfoHttp["nav_dist"] = nav_distance_to_target_last;
+
+	// LinkTrack UWB 定位数据
+	jsonInfoHttp["lt_x"]     = lt_pos_x;
+	jsonInfoHttp["lt_y"]     = lt_pos_y;
+	jsonInfoHttp["lt_yaw"]   = lt_yaw;
+	jsonInfoHttp["lt_eop_x"] = lt_eop_x;
+	jsonInfoHttp["lt_eop_y"] = lt_eop_y;
+	jsonInfoHttp["lt_cnt"]   = lt_frame_count;
 
 	switch(moduleType) {
 	case 1:

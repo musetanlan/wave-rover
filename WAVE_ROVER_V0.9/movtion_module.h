@@ -3,7 +3,7 @@
 #include "nav_pid_ctrl.h"
 
 // 引用 .ino 中定义的全局 JSON 文档（供独立 .cpp 编译单元使用）
-extern StaticJsonDocument<512> jsonInfoHttp;
+extern StaticJsonDocument<768> jsonInfoHttp;
 
 // switch parts
 int switch_pwm_A = 0;

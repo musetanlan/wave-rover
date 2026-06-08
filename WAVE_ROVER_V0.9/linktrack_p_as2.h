@@ -49,6 +49,7 @@
 #define LINKTRACK_P_AS2_H
 
 #include <Arduino.h>
+#include "nav_pid_ctrl.h"
 
 // ==================== 编译选项 ====================
 // 取消注释以启用 FreeRTOS 任务模式
