@@ -448,6 +448,35 @@ const char index_html[] PROGMEM = R"rawliteral(
             </div>
         </section>
         <section>
+            <!-- 导航PID控制面板 -->
+            <div class="info-box" style="padding:20px;">
+                <h2 class="h2-tt" style="font-size:1.2em;margin:0 0 12px 0;">导航PID控制</h2>
+                <div class="feedb-p" style="flex-wrap:wrap;gap:8px;">
+                    <label style="color:#1a1a1a;">目标X(m):</label>
+                    <input type="number" id="navTargetX" placeholder="X (m)" step="0.01" value="1.0" style="width:80px;height:36px;background:#fff;border:1px solid #ddd;border-radius:4px;color:#1a1a1a;text-align:center;">
+                    <label style="color:#1a1a1a;">目标Y(m):</label>
+                    <input type="number" id="navTargetY" placeholder="Y (m)" step="0.01" value="0.0" style="width:80px;height:36px;background:#fff;border:1px solid #ddd;border-radius:4px;color:#1a1a1a;text-align:center;">
+                    <button class="small-btn" onclick="navSetTarget();" style="background-color:#1a73e8;color:#fff;">出发</button>
+                    <button class="small-btn" onclick="navStop();">停止</button>
+                    <button class="small-btn" onclick="navResetOdom();">归零</button>
+                </div>
+                <div class="info-box num-box-sma" style="margin-top:12px;">
+                    <div>
+                        <span class="num-color sma-num" id="navStatus">待命</span>
+                        <span>状态</span>
+                    </div>
+                    <div>
+                        <span class="num-color sma-num" id="navDist">--</span>
+                        <span>距离(m)</span>
+                    </div>
+                    <div>
+                        <span class="num-color sma-num" id="navCur">(0.00,0.00)</span>
+                        <span>当前位置</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section>
             <div class="fb-info">
                 <h2 class="h2-tt" id="deviceInfo">反馈信息</h2>
                 <span id="fbInfo" word-wrap="break-all">JSON反馈信息将显示在此处</span>
@@ -463,151 +492,9 @@ const char index_html[] PROGMEM = R"rawliteral(
                         <button class="w-btn" onclick="cmdFill('jsonData', 'cmd1');">填入</button>
                     </div>
                     <div>
-                        <p>PWM输入: <span id="cmd11" class="cmd-value">{"T":11,"L":164,"R":164}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd11');">填入</button>
-                    </div>
-                    <div>
-                        <p>ROS控制: <span id="cmd13" class="cmd-value">{"T":13,"X":0.1,"Z":0.3}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd13');">填入</button>
-                    </div>
-                    <div>
-                        <p>PID设置: <span id="cmd2" class="cmd-value">{"T":2,"P":200,"I":2500,"D":0,"L":255}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd2');">填入</button>
-                    </div>
-                </div>
-                <div class="info-box json-cmd-info">
-                    <div>
-                        <p>OLED设置: <span id="cmd3" class="cmd-value">{"T":3,"lineNum":0,"Text":"putYourTextHere"}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd3');">填入</button>
-                    </div>
-                    <div>
-                        <p>OLED默认: <span id="cmd-3" class="cmd-value">{"T":-3}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd-3');">填入</button>
-                    </div>
-                </div>
-                <div class="info-box json-cmd-info">
-                    <div>
-                        <p>模块类型: <span id="cmd4" class="cmd-value">{"T":4,"cmd":0}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd4');">填入</button>
-                    </div>
-                    <div>
-                        <p>末端类型: <span id="cmd124" class="cmd-value">{"T":124,"mode":0}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd124');">填入</button>
-                    </div>
-                    <div>
-                        <p>末端配置: <span id="cmd125" class="cmd-value">{"T":125,"pos":3,"ea":0,"eb":20}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd125');">填入</button>
-                    </div>
-                </div>
-                <div class="info-box json-cmd-info">
-                    <div>
-                        <p>获取IMU数据: <span id="cmd126" class="cmd-value">{"T":126}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd126');">填入</button>
-                    </div>
-                </div>
-                <div class="info-box json-cmd-info">
-                    <div>
-                        <p>基础反馈: <span id="cmd130" class="cmd-value">{"T":130}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd130');">填入</button>
-                    </div>
-                    <div>
-                        <p>反馈流控制: <span id="cmd131" class="cmd-value">{"T":131,"cmd":0}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd131');">填入</button>
-                    </div>
-                    <div>
-                        <p>反馈间隔: <span id="cmd142" class="cmd-value">{"T":142,"cmd":0}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd142');">填入</button>
-                    </div>
-                    <div>
-                        <p>串口回显: <span id="cmd143" class="cmd-value">{"T":143,"cmd":0}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd143');">填入</button>
-                    </div>
-                    <div>
                         <p>心跳设置: <span id="cmd136" class="cmd-value">{"T":136,"cmd":0}</span></p>
                         <button class="w-btn" onclick="cmdFill('jsonData', 'cmd136');">填入</button>
                     </div>
-                </div>
-                <div class="info-box json-cmd-info">
-                    <div>
-                        <p>LED控制: <span id="cmd132" class="cmd-value">{"T":132,"IO4":255,"IO5":255}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd132');">填入</button>
-                    </div>
-                    <div>
-                        <p>云台简单控制: <span id="cmd133" class="cmd-value">{"T":133,"X":45,"Y":45,"SPD":0,"ACC":0}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd133');">填入</button>
-                    </div>
-                    <div>
-                        <p>云台移动控制: <span id="cmd134" class="cmd-value">{"T":134,"X":45,"Y":45,"SX":300,"SY":300}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd134');">填入</button>
-                    </div>
-                    <div>
-                        <p>云台停止: <span id="cmd135" class="cmd-value">{"T":135}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd135');">填入</button>
-                    </div>
-                    <div>
-                        <p>云台增稳: <span id="cmd137" class="cmd-value">{"T":137,"s":1,"y":0}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd137');">填入</button>
-                    </div>
-                    <div>
-                        <p>云台用户控制: <span id="cmd141" class="cmd-value">{"T":141,"s":1,"y":0}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd141');">填入</button>
-                    </div>
-                </div>
-                <div class="info-box json-cmd-info">
-                    <div>
-                        <p>设置速度倍率: <span id="cmd138" class="cmd-value">{"T":138,"L":1,"R":1}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd138');">填入</button>
-                    </div>
-                    <div>
-                        <p>获取速度倍率: <span id="cmd139" class="cmd-value">{"T":139}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd139');">填入</button>
-                    </div>
-                    <div>
-                        <p>保存速度倍率: <span id="cmd140" class="cmd-value">{"T":140}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd140');">填入</button>
-                    </div>
-                </div>
-                <div class="info-box json-cmd-info">
-                    <div>
-                        <p>任务内容: <span id="cmd221" class="cmd-value">{"T":221,"name":"mission_a"}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd221');">填入</button>
-                    </div>
-                    <div>
-                        <p>追加任务步骤: <span id="cmd222" class="cmd-value">{"T":222,"name":"mission_a","step":"{\"T\":137,\"s\":1,\"y\":0}"}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd222');">填入</button>
-                    </div>
-                </div>
-                <div class="info-box json-cmd-info">
-                    <div>
-                        <p>广播跟随者: <span id="cmd300" class="cmd-value">{"T":300,"mode":1}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd300');">填入</button>
-                    </div>
-                    <div>
-                        <p>ESP-NOW配置: <span id="cmd301" class="cmd-value">{"T":301,"mode":3}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd301');">填入</button>
-                    </div>
-                    <div>
-                        <p>获取MAC地址: <span id="cmd302" class="cmd-value">{"T":302}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd302');">填入</button>
-                    </div>
-                    <div>
-                        <p>添加跟随者: <span id="cmd303" class="cmd-value">{"T":303,"mac":"FF:FF:FF:FF:FF:FF"}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd303');">填入</button>
-                    </div>
-                    <div>
-                        <p>移除跟随者: <span id="cmd304" class="cmd-value">{"T":304,"mac":"FF:FF:FF:FF:FF:FF"}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd304');">填入</button>
-                    </div>
-                    <div>
-                        <p>群组控制: <span id="cmd305" class="cmd-value">{"T":305,"dev":0,"b":0,"s":0,"e":1.57,"h":1.57,"cmd":0,"megs":"hello!"}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd305');">填入</button>
-                    </div>
-                    <div>
-                        <p>单机控制: <span id="cmd306" class="cmd-value">{"T":306,"mac":"FF:FF:FF:FF:FF:FF","dev":0,"b":0,"s":0,"e":1.57,"h":1.57,"cmd":0,"megs":"hello!"}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd306');">填入</button>
-                    </div>
-                </div>
-                <div class="info-box json-cmd-info">
                     <div>
                         <p>启动WiFi: <span id="cmd401" class="cmd-value">{"T":401,"cmd":3}</span></p>
                         <button class="w-btn" onclick="cmdFill('jsonData', 'cmd401');">填入</button>
@@ -617,45 +504,9 @@ const char index_html[] PROGMEM = R"rawliteral(
                         <button class="w-btn" onclick="cmdFill('jsonData', 'cmd402');">填入</button>
                     </div>
                     <div>
-                        <p>设置STA: <span id="cmd403" class="cmd-value">{"T":403,"ssid":"na","password":"ps"}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd403');">填入</button>
-                    </div>
-                    <div>
-                        <p>WiFi AP+STA: <span id="cmd404" class="cmd-value">{"T":404,"ap_ssid":"UGV","ap_password":"12345678","sta_ssid":"na","sta_password":"ps"}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd404');">填入</button>
-                    </div>
-                    <div>
-                        <p>WiFi信息: <span id="cmd405" class="cmd-value">{"T":405}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd405');">填入</button>
-                    </div>
-                    <div>
-                        <p>从状态创建WiFi配置: <span id="cmd406" class="cmd-value">{"T":406}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd406');">填入</button>
-                    </div>
-                    <div>
-                        <p>手动创建WiFi配置: <span id="cmd406" class="cmd-value">{"T":407,"mode":3,"ap_ssid":"UGV","ap_password":"12345678","sta_ssid":"na","sta_password":"ps"}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd406');">填入</button>
-                    </div>
-                    <div>
                         <p>停止WiFi: <span id="cmd408" class="cmd-value">{"T":408}</span></p>
                         <button class="w-btn" onclick="cmdFill('jsonData', 'cmd408');">填入</button>
                     </div>
-                </div>
-                <div class="info-box json-cmd-info">
-                    <div>
-                        <p>设置舵机ID: <span id="cmd501" class="cmd-value">{"T":501,"raw":1,"new":11}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd501');">填入</button>
-                    </div>
-                    <div>
-                        <p>设置中位: <span id="cmd502" class="cmd-value">{"T":502,"id":11}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd502');">填入</button>
-                    </div>
-                    <div>
-                        <p>设置舵机PID: <span id="cmd503" class="cmd-value">{"T":503,"id":14,"p":16}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd503');">填入</button>
-                    </div>
-                </div>
-                <div class="info-box json-cmd-info">
                     <div>
                         <p>重启: <span id="cmd600" class="cmd-value">{"T":600}</span></p>
                         <button class="w-btn" onclick="cmdFill('jsonData', 'cmd600');">填入</button>
@@ -665,60 +516,8 @@ const char index_html[] PROGMEM = R"rawliteral(
                         <button class="w-btn" onclick="cmdFill('jsonData', 'cmd601');">填入</button>
                     </div>
                     <div>
-                        <p>启动任务信息: <span id="cmd602" class="cmd-value">{"T":602}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd602');">填入</button>
-                    </div>
-                    <div>
                         <p>重置启动任务: <span id="cmd603" class="cmd-value">{"T":603}</span></p>
                         <button class="w-btn" onclick="cmdFill('jsonData', 'cmd603');">填入</button>
-                    </div>
-                    <div>
-                        <p>清除NVS: <span id="cmd604" class="cmd-value">{"T":604}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd604');">填入</button>
-                    </div>
-                    <div>
-                        <p>信息打印: <span id="cmd605" class="cmd-value">{"T":605,"cmd":1}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd605');">填入</button>
-                    </div>
-                </div>
-                <div class="info-box json-cmd-info">
-                    <div>
-                        <p>设置模式类型: <span id="cmd900" class="cmd-value">{"T":900,"main":1,"module":0}</span></p>
-                        <button class="w-btn" onclick="cmdFill('jsonData', 'cmd900');">填入</button>
-                    </div>
-                </div>
-
-                <!-- 导航PID控制面板 -->
-                <div class="info-box" style="padding:20px;">
-                    <h2 class="h2-tt" style="font-size:1.2em;margin:0 0 12px 0;">导航PID控制</h2>
-                    <div class="feedb-p" style="flex-wrap:wrap;gap:8px;">
-                        <label style="color:#1a1a1a;">目标X(m):</label>
-                        <input type="number" id="navTargetX" placeholder="X (m)" step="0.01" value="1.0" style="width:80px;height:36px;background:#fff;border:1px solid #ddd;border-radius:4px;color:#1a1a1a;text-align:center;">
-                        <label style="color:#1a1a1a;">目标Y(m):</label>
-                        <input type="number" id="navTargetY" placeholder="Y (m)" step="0.01" value="0.0" style="width:80px;height:36px;background:#fff;border:1px solid #ddd;border-radius:4px;color:#1a1a1a;text-align:center;">
-                        <button class="small-btn" onclick="navSetTarget();" style="background-color:#1a73e8;color:#fff;">出发</button>
-                        <button class="small-btn" onclick="navStop();">停止</button>
-                        <button class="small-btn" onclick="navResetOdom();">归零</button>
-                    </div>
-                    <div class="info-box num-box-sma" style="margin-top:12px;">
-                        <div>
-                            <span class="num-color sma-num" id="navStatus">待命</span>
-                            <span>状态</span>
-                        </div>
-                        <div>
-                            <span class="num-color sma-num" id="navDist">--</span>
-                            <span>距离(m)</span>
-                        </div>
-                        <div>
-                            <span class="num-color sma-num" id="navCur">(0.00,0.00)</span>
-                            <span>当前位置</span>
-                        </div>
-                    </div>
-                    <div class="json-cmd-info" style="margin-top:8px;">
-                        <div><p>设置目标:{"T":700,"x":1,"y":0}</p><button class="w-btn" onclick="cmdFill('jsonData','navCmd700');">填入</button><span id="navCmd700" style="display:none;">{"T":700,"x":1.0,"y":0.0}</span></div>
-                        <div><p>停止导航:{"T":702}</p><button class="w-btn" onclick="cmdFill('jsonData','navCmd702');">填入</button><span id="navCmd702" style="display:none;">{"T":702}</span></div>
-                        <div><p>查询状态:{"T":707}</p><button class="w-btn" onclick="navGetStatus();">查询</button></div>
-                        <div><p>里程归零:{"T":704}</p><button class="w-btn" onclick="cmdFill('jsonData','navCmd704');">填入</button><span id="navCmd704" style="display:none;">{"T":704}</span></div>
                     </div>
                 </div>
             </div>
