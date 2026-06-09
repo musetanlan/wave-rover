@@ -4,16 +4,16 @@
  * ============================================================
  *
  * 【功能概述】
- *   通过 ESP32 Serial2 (GPIO13/15) 接收 LinkTrack TAG 的定位数据，
+ *   通过 ESP32 Serial (GPIO3/1) 接收 LinkTrack TAG 的定位数据，
  *   解析 NLink TAG_Frame0 协议帧（固定128字节），提取实时坐标、
  *   速度、欧拉角、精度估计等信息，并自动注入导航 PID 系统。
  *
  * 【依赖】
- *   - ESP32 Arduino 框架 (HardwareSerial Serial2)
+ *   - ESP32 Arduino 框架 (HardwareSerial Serial)
  *   - nav_pid_ctrl.h: nav_update_position() 函数
  *
  * 【数据流】
- *   LinkTrack TAG --UART(921600bps)--> ESP32 Serial2
+ *   LinkTrack TAG --UART(921600bps)--> ESP32 Serial
  *       --> 状态机逐字节解析 NLink 帧
  *       --> 校验通过后更新全局变量
  *       --> 自动调用 nav_update_position() 覆盖里程计
@@ -32,9 +32,9 @@
 #include "nav_pid_ctrl.h"
 
 // ==================== UART 配置 ====================
-// Serial2 引脚定义
-#define LINKTRACK_RX_PIN   13   // ESP32 GPIO13 → LinkTrack TX
-#define LINKTRACK_TX_PIN   15   // ESP32 GPIO15 → LinkTrack RX
+// Serial (UART0) 默认引脚: RX=GPIO3, TX=GPIO1
+// ESP32 GPIO3  ← LinkTrack TX
+// ESP32 GPIO1  → LinkTrack RX
 // LinkTrack 默认波特率（需与 NAssistant 中配置一致）
 #define LINKTRACK_BAUDRATE  921600
 
@@ -165,15 +165,10 @@ static bool lt_verify_checksum(const uint8_t *data, uint8_t length) {
  * 在 setup() 中调用一次
  */
 void initLinkTrack() {
-  Serial2.begin(LINKTRACK_BAUDRATE, SERIAL_8N1,
-                LINKTRACK_RX_PIN, LINKTRACK_TX_PIN);
-  while (!Serial2) {}
+  Serial.flush();
+  Serial.updateBaudRate(LINKTRACK_BAUDRATE);
   if (InfoPrint >= 1) {
-    Serial.print("[LinkTrack] UART init: RX=GPIO");
-    Serial.print(LINKTRACK_RX_PIN);
-    Serial.print(", TX=GPIO");
-    Serial.print(LINKTRACK_TX_PIN);
-    Serial.print(", Baud=");
+    Serial.print("[LinkTrack] UART init: Serial RX=GPIO3, TX=GPIO1, Baud=");
     Serial.println(LINKTRACK_BAUDRATE);
   }
 }
@@ -193,8 +188,8 @@ void initLinkTrack() {
  * 在 loop() 中每次循环调用一次
  */
 void updateLinkTrack() {
-  while (Serial2.available() > 0) {
-    uint8_t b = Serial2.read();
+  while (Serial.available() > 0) {
+    uint8_t b = Serial.read();
 
     if (!lt_synced) {
       // ===== 状态1: 等待帧头 0x55 =====

@@ -4,8 +4,8 @@
  * ============================================================
  *
  * 【功能概述】
- *   针对 Nooploop LinkTrack P_AS2 器件的完整定位模块，通过 ESP32 Serial2
- *   (GPIO13/15) 与 P_AS2 标签通信，支持：
+ *   针对 Nooploop LinkTrack P_AS2 器件的完整定位模块，通过 ESP32 Serial
+ *   (GPIO3/1) 与 P_AS2 标签通信，支持：
  *     - NLink TAG_Frame0 协议解析（定位核心数据）
  *     - NLink NODE_FRAME2 协议解析（基站距离、IMU 等扩展数据）
  *     - 下行配置命令发送（LP_MODE0、波特率等设备参数）
@@ -20,11 +20,11 @@
  *   也可通过 NAssistant 预先配置。设备配置参数持久化存储在 Flash 中。
  *
  * 【依赖】
- *   - ESP32 Arduino 框架 (HardwareSerial Serial2)
+ *   - ESP32 Arduino 框架 (HardwareSerial Serial)
  *   - nav_pid_ctrl.h: nav_update_position() 函数
  *
  * 【数据流】
- *   P_AS2 TAG --UART(921600bps)--> ESP32 Serial2
+ *   P_AS2 TAG --UART(921600bps)--> ESP32 Serial
  *       --> 状态机逐字节解析 NLink 帧
  *       --> TAG_Frame0 / NODE_FRAME2 分类解析
  *       --> 统一后处理 → 更新全局变量
@@ -56,9 +56,9 @@
 // #define LT_USE_FREERTOS
 
 // ==================== UART 配置 ====================
-// Serial2 引脚定义
-#define LINKTRACK_RX_PIN   13   // ESP32 GPIO13 → P_AS2 TX
-#define LINKTRACK_TX_PIN   15   // ESP32 GPIO15 → P_AS2 RX
+// Serial (UART0) 默认引脚: RX=GPIO3, TX=GPIO1
+// ESP32 GPIO3  ← P_AS2 TX
+// ESP32 GPIO1  → P_AS2 RX
 // LinkTrack 默认波特率（需与 NAssistant 中配置一致）
 #define LINKTRACK_BAUDRATE  921600
 
@@ -280,8 +280,8 @@ static bool lt_build_and_send_frame(uint8_t func_code,
   total_len++;
 
   // 发送帧
-  size_t written = Serial2.write(frame, total_len);
-  Serial2.flush();  // 确保发送完成
+  size_t written = Serial.write(frame, total_len);
+  Serial.flush();  // 确保发送完成
 
   if (InfoPrint >= 1) {
     Serial.print("[LK] Sent downlink frame: func=0x");
@@ -548,7 +548,7 @@ static const uint8_t LT_QUEUE_LENGTH = 16;
 /**
  * FreeRTOS 解析任务函数
  *
- * 在独立任务中循环读取 Serial2，逐字节解析 NLink 帧。
+ * 在独立任务中循环读取 Serial，逐字节解析 NLink 帧。
  * 完整的帧数据打包后通过队列发送给主循环。
  */
 static void lt_parser_task(void *pvParameters) {
@@ -563,12 +563,12 @@ static void lt_parser_task(void *pvParameters) {
 
   while (1) {
     // 检查是否有数据
-    if (Serial2.available() == 0) {
+    if (Serial.available() == 0) {
       vTaskDelay(pdMS_TO_TICKS(1));  // 1ms 让出 CPU
       continue;
     }
 
-    uint8_t b = Serial2.read();
+    uint8_t b = Serial.read();
 
     if (!synced) {
       // ===== 状态1: 等待帧头 0x55 =====
@@ -765,21 +765,16 @@ void lt_stop_task_mode() {}
  * 初始化 LinkTrack P_AS2 UART 通信
  *
  * 在 setup() 中调用一次。执行顺序：
- * 1. 初始化 Serial2 (921600 bps, 8N1, GPIO13/15)
+ * 1. 切换 Serial 波特率 (921600 bps, GPIO3/1)
  * 2. 可选：发送 LP_MODE0 配置命令（lt_auto_config=true 时）
  * 3. 可选：启动 FreeRTOS 解析任务（lt_use_task_mode=true 时）
  */
 void initLinkTrack() {
-  Serial2.begin(LINKTRACK_BAUDRATE, SERIAL_8N1,
-                LINKTRACK_RX_PIN, LINKTRACK_TX_PIN);
-  while (!Serial2) {}
+  Serial.flush();
+  Serial.updateBaudRate(LINKTRACK_BAUDRATE);
 
   if (InfoPrint >= 1) {
-    Serial.print("[LinkTrack] UART init: RX=GPIO");
-    Serial.print(LINKTRACK_RX_PIN);
-    Serial.print(", TX=GPIO");
-    Serial.print(LINKTRACK_TX_PIN);
-    Serial.print(", Baud=");
+    Serial.print("[LinkTrack] UART init: Serial RX=GPIO3, TX=GPIO1, Baud=");
     Serial.println(LINKTRACK_BAUDRATE);
   }
 
@@ -795,8 +790,8 @@ void initLinkTrack() {
     delay(200);  // 等待设备处理配置命令
 
     // 清空串口缓冲区，丢弃配置期间可能到达的部分帧
-    while (Serial2.available()) {
-      Serial2.read();
+    while (Serial.available()) {
+      Serial.read();
     }
 
     lt_configured = true;
@@ -816,7 +811,7 @@ void initLinkTrack() {
  * 接收并解析一帧定位数据，更新全局变量
  *
  * 在 loop() 中每次调用。行为取决于运行模式：
- * - 轮询模式 (lt_use_task_mode=false): 逐字节从 Serial2 读取并解析
+ * - 轮询模式 (lt_use_task_mode=false): 逐字节从 Serial 读取并解析
  * - 任务模式 (lt_use_task_mode=true): 从 FreeRTOS 队列读取最新解析结果
  *
  * 状态机流程（轮询模式）:
@@ -848,8 +843,8 @@ void updateLinkTrack() {
 #endif
 
   // ===== 轮询模式：逐字节解析（与原 linktrack_ctrl.h 完全一致）=====
-  while (Serial2.available() > 0) {
-    uint8_t b = Serial2.read();
+  while (Serial.available() > 0) {
+    uint8_t b = Serial.read();
 
     if (!lt_synced) {
       // ===== 状态1: 等待帧头 0x55 =====
