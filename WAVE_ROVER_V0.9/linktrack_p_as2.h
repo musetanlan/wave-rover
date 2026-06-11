@@ -67,10 +67,20 @@ unsigned long lt_error_count = 0;   // 校验错误帧数
 bool  lt_auto_nav_update = true;    // 是否自动调用 nav_update_position()
 float lt_eop_xy_max      = 0.5f;    // EOP 超过此值不注入导航 (0=不过滤)
 
+// 基于坐标差分的航向计算（替代不可靠的 LinkTrack 陀螺仪 yaw）
+float lt_heading_from_pos      = 0.0f;   // 由坐标差分计算的航向角 (rad)
+bool  lt_use_pos_heading       = true;   // true=使用坐标差分航向, false=使用LinkTrack yaw
+float lt_pos_heading_min_dist  = 0.02f;  // 最小位移阈值 (m)，低于此值保持上次航向
+
 // ==================== 内部解析状态 ====================
 static uint8_t lt_rx_buf[LINKTRACK_FRAME_LEN];
 static uint8_t lt_rx_idx = 0;
 static bool    lt_synced = false;
+
+// 坐标差分航向计算 —— 追踪前一帧坐标
+static float lt_prev_x = 0.0f;
+static float lt_prev_y = 0.0f;
+static bool  lt_prev_valid = false;
 
 // ==================== 辅助函数 ====================
 
@@ -112,6 +122,35 @@ static bool lt_verify_checksum(const uint8_t *data, uint8_t length) {
 }
 
 // ==================== 核心函数 ====================
+
+/**
+ * 根据连续两帧坐标的位移向量计算航向角
+ *
+ * - 第一帧：记录坐标，返回当前已知航向
+ * - 位移 >= lt_pos_heading_min_dist：计算 atan2(dy, dx) 更新航向
+ * - 位移 < 阈值（静止/微动）：保持上次航向不变，避免噪声
+ *
+ * 返回: 航向角 (rad), 0 = +X 轴方向
+ */
+float lt_calc_heading_from_pos(float x, float y) {
+    if (!lt_prev_valid) {
+        lt_prev_x = x;
+        lt_prev_y = y;
+        lt_prev_valid = true;
+        lt_heading_from_pos = nav_current_heading;
+        return lt_heading_from_pos;
+    }
+    float dx = x - lt_prev_x;
+    float dy = y - lt_prev_y;
+    float dist = sqrtf(dx * dx + dy * dy);
+    if (dist >= lt_pos_heading_min_dist) {
+        lt_heading_from_pos = atan2f(dy, dx);
+    }
+    // 位移太小 → 保持 lt_heading_from_pos 上次值不变
+    lt_prev_x = x;
+    lt_prev_y = y;
+    return lt_heading_from_pos;
+}
 
 /**
  * 初始化 LinkTrack UART 通信
@@ -207,7 +246,9 @@ void updateLinkTrack() {
                         ((lt_eop_x <= lt_eop_xy_max || lt_eop_x >= 2.54f) &&
                          (lt_eop_y <= lt_eop_xy_max || lt_eop_y >= 2.54f));
           if (eop_ok) {
-            float heading_rad = lt_yaw * M_PI / 180.0f;
+            float heading_rad = lt_use_pos_heading
+                ? lt_calc_heading_from_pos(lt_pos_x, lt_pos_y)
+                : (lt_yaw * M_PI / 180.0f);
             nav_update_position(lt_pos_x, lt_pos_y, heading_rad);
           }
         }
