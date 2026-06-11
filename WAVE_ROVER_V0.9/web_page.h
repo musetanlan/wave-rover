@@ -75,8 +75,8 @@ const char index_html[] PROGMEM = R"rawliteral(
         color: #1a1a1a;
         background: rgba(164,169,186,0);
         font-size: 1em;
-        width: 100px;
-        height: 100px;
+        width: 125px;
+        height: 125px;
          -webkit-touch-callout: none;
         -webkit-user-select: none;
         -khtml-user-select: none;
@@ -85,8 +85,8 @@ const char index_html[] PROGMEM = R"rawliteral(
         user-select: none; 
     }
     .cc-middle{
-        width: 100px;
-        height: 100px;
+        width: 120px;
+        height: 120px;
         border-radius: 50%;
         background-color: #e0e3e8;
     }
@@ -96,8 +96,8 @@ const char index_html[] PROGMEM = R"rawliteral(
     .cc-btn:active svg { opacity: 0.8; }
     .cc-middle:hover { opacity: 0.7; }
     .controlor-c > div{
-        width: 300px;
-        height: 300px;
+        width: 360px;
+        height: 360px;
         background-color: rgba(0,0,0,0.04);
         border-radius: 40px;
         box-shadow: 10px 10px 10px rgba(0,0,0,0.05);
@@ -366,18 +366,6 @@ const char index_html[] PROGMEM = R"rawliteral(
                             </div>
                         </div>
                     </div>
-                    <div class="info-device-box">
-                        <div class="info-box num-box-sma">
-                            <div>
-                                <span class="num-color sma-num" id="IP">192.168.10.67</span>
-                                <span id="IPn">IP地址</span>
-                            </div>
-                            <div>
-                                <span class="num-color sma-num" id="MAC">44:17:93:EE:F8:F8</span>
-                                <span id="MACn">MAC地址</span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
                 <div class="for-move-b controlor">
                     <div class="controlor-c">
@@ -413,6 +401,18 @@ const char index_html[] PROGMEM = R"rawliteral(
                                 <label><button name="speedbtn" class="small-btn" onclick="ledCtrl(1);">灯1</button></label>
                                 <label><button name="speedbtn" class="small-btn" onclick="ledCtrl(2);">灯2</button></label>
                                 <label><button name="speedbtn" class="small-btn" onclick="ledCtrl(0);">关闭</button></label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-device-box">
+                        <div class="info-box num-box-sma">
+                            <div>
+                                <span class="num-color sma-num" id="IP">192.168.10.67</span>
+                                <span id="IPn">IP地址</span>
+                            </div>
+                            <div>
+                                <span class="num-color sma-num" id="MAC">44:17:93:EE:F8:F8</span>
+                                <span id="MACn">MAC地址</span>
                             </div>
                         </div>
                     </div>
