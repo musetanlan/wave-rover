@@ -120,6 +120,10 @@ static bool lt_verify_checksum(const uint8_t *data, uint8_t length) {
 void initLinkTrack() {
   Serial.flush();
   Serial.updateBaudRate(LINKTRACK_BAUDRATE);
+
+  // 使用 LinkTrack 提供的位置和航向，禁用编码器里程计自动覆盖
+  nav_use_auto_odometry = false;
+
   if (InfoPrint >= 1) {
     Serial.print("[LinkTrack] UART init: RX=GPIO3, Baud=");
     Serial.println(LINKTRACK_BAUDRATE);
