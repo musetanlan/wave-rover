@@ -247,6 +247,8 @@ const char index_html[] PROGMEM = R"rawliteral(
         .big-num{font-size: 2em;}
         .controlor > div{margin: 40px 0;}
     }
+    #navMapContainer { margin-top:16px; text-align:center; }
+    #navMap { border:1px solid #ddd; border-radius:4px; background:#fafafa; }
     </style>
 </head>
 <body>
@@ -397,6 +399,9 @@ const char index_html[] PROGMEM = R"rawliteral(
                         <span>当前位置</span>
                     </div>
                 </div>
+                <div id="navMapContainer">
+                    <canvas id="navMap" width="915" height="320"></canvas>
+                </div>
             </div>
         </section>
         <section>
@@ -455,6 +460,12 @@ const char index_html[] PROGMEM = R"rawliteral(
     var backwardButton;  // 2
     var fbNewer;
 
+    // 导航地图数据
+    var navMapCX = 0.0, navMapCY = 0.0;
+    var navMapTX = null, navMapTY = null;
+    var navMapScale = 50;  // 像素/米
+    var navMapTrail = [];
+
     var leftButton;      // 1
     var rightButton;     // 2
     var lrNewer;
@@ -505,6 +516,94 @@ const char index_html[] PROGMEM = R"rawliteral(
         xhttp.open("GET", "js?json="+document.getElementById('jsonData').value, true);
         xhttp.send();
     }
+    function drawNavMap() {
+        var canvas = document.getElementById("navMap");
+        if (!canvas) return;
+        var ctx = canvas.getContext("2d");
+        var w = canvas.width, h = canvas.height;
+        var cx = w / 2, cy = h / 2;
+        var scale = navMapScale;
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = "#fafafa";
+        ctx.fillRect(0, 0, w, h);
+
+        // 网格线
+        var gridRange = Math.ceil(Math.max(w, h) / 2 / scale) + 1;
+        ctx.strokeStyle = "#e8e8e8";
+        ctx.lineWidth = 1;
+        for (var i = -gridRange; i <= gridRange; i++) {
+            var px = cx + i * scale;
+            ctx.beginPath();
+            ctx.moveTo(px, 0); ctx.lineTo(px, h); ctx.stroke();
+            var py = cy + i * scale;
+            ctx.beginPath();
+            ctx.moveTo(0, py); ctx.lineTo(w, py); ctx.stroke();
+        }
+
+        // 坐标轴
+        ctx.strokeStyle = "#ccc";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.stroke();
+
+        // 刻度
+        ctx.fillStyle = "#999";
+        ctx.font = "10px sans-serif";
+        ctx.textAlign = "center";
+        for (var i = -gridRange; i <= gridRange; i++) {
+            if (i !== 0) {
+                ctx.fillText(i + "m", cx + i * scale, cy + 14);
+                ctx.save();
+                ctx.translate(cx - 14, cy + i * scale);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText(i + "m", 0, 0);
+                ctx.restore();
+            }
+        }
+        ctx.fillText("0", cx, cy + 14);
+
+        // 目标位置
+        if (navMapTX !== null && navMapTY !== null) {
+            var tx = cx + navMapTX * scale;
+            var ty = cy - navMapTY * scale;
+            ctx.fillStyle = "#e53935";
+            ctx.beginPath();
+            ctx.arc(tx, ty, 6, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 9px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("T", tx, ty + 4);
+        }
+
+        // 当前位置
+        var px = cx + navMapCX * scale;
+        var py = cy - navMapCY * scale;
+
+        // 轨迹
+        navMapTrail.push({x: px, y: py});
+        if (navMapTrail.length > 50) navMapTrail.shift();
+        if (navMapTrail.length > 1) {
+            ctx.strokeStyle = "rgba(26,115,232,0.3)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(navMapTrail[0].x, navMapTrail[0].y);
+            for (var t = 1; t < navMapTrail.length; t++) {
+                ctx.lineTo(navMapTrail[t].x, navMapTrail[t].y);
+            }
+            ctx.stroke();
+        }
+
+        // 当前点
+        ctx.fillStyle = "#1a73e8";
+        ctx.beginPath();
+        ctx.arc(px, py, 7, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
     function infoUpdate() {
         var jsonCmd = {
             "T": 130
@@ -553,6 +652,14 @@ const char index_html[] PROGMEM = R"rawliteral(
                     }
                     document.getElementById("navDist").innerHTML = jsonResponse.nav_dist?.toFixed(3) || "--";
                     document.getElementById("navCur").innerHTML = "(" + (jsonResponse.nav_cx?.toFixed(2)||"0.00") + "," + (jsonResponse.nav_cy?.toFixed(2)||"0.00") + ")";
+                    // 更新地图数据
+                    navMapCX = jsonResponse.nav_cx || 0.0;
+                    navMapCY = jsonResponse.nav_cy || 0.0;
+                    if (jsonResponse.hasOwnProperty('nav_tx')) {
+                        navMapTX = jsonResponse.nav_tx;
+                        navMapTY = jsonResponse.nav_ty;
+                    }
+                    drawNavMap();
                 }
             }
         };
