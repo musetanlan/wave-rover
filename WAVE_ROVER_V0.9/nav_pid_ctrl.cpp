@@ -22,6 +22,9 @@ extern unsigned long lastCmdRecvTime; // 心跳计时器
 // --- 来自 IMU_ctrl.h (定义在 ugv_config.h) ---
 extern double icm_yaw;                // IMU 偏航角（度）
 
+// --- 来自 battery_ctrl.h ---
+extern float loadVoltage_V;           // 电池负载电压 (V)，由 INA219 实时测量
+
 // ==================== 全局变量定义 ====================
 
 // ----- 当前位置 -----
@@ -63,7 +66,11 @@ float nav_max_pwm = 255.0;
 float nav_min_pwm = 30.0;
 
 // ----- PWM与速度换算系数 -----
-float nav_pwm_per_ms = 510.0;   // 255 / 0.5 = 510
+// 基础换算系数（满电 12.6V 下的标定值）：255 PWM ≈ 0.5 m/s → 255/0.5 = 510
+// 电压低于参考值时，同样 PWM 的实际车速下降，需动态放大系数补偿
+float nav_pwm_per_ms = 510.0;       // 满电基准系数
+#define NAV_REF_VOLTAGE 12.6f       // 标定时的参考电压 (V)，低于此值触发补偿
+#define NAV_MIN_VOLTAGE  9.0f       // 最低补偿电压 (V)，低于此值不再放大（保护电机）
 
 // ----- 调试输出 -----
 float nav_output_left = 0.0;
@@ -301,9 +308,27 @@ void nav_pid_compute() {
     float left_speed = linear_speed - angular_speed * (TRACK_WIDTH / 2.0);
     float right_speed = linear_speed + angular_speed * (TRACK_WIDTH / 2.0);
 
-    // ====== 第六步：速度换PWM → 电机输出 ======
-    float left_pwm = left_speed * nav_pwm_per_ms;
-    float right_pwm = right_speed * nav_pwm_per_ms;
+    // ====== 第六步：速度换PWM → 电机输出（含电池电压补偿）======
+    //
+    // 问题：直流电机转速近似正比于供电电压。满电 12.6V 时 PWM 255 ≈ 0.5 m/s，
+    //       但电压降到 10V 时 PWM 255 只能跑 ≈ 0.2 m/s。
+    //       如果始终用 nav_pwm_per_ms = 510，低电时 PID 认为"给了 0.3m/s 的 PWM"，
+    //       实际只有 ~0.12 m/s，小车反应迟钝、收敛缓慢。
+    //
+    // 解法：根据当前电池电压动态调整 PWM 换算系数。
+    //       电压越低 → 要达到同样的目标速度 → 需要更大的 PWM 占空比。
+    //       补偿比例 = 参考电压 / 当前电压
+    //       例：12.6V → 补偿=1.0 (不变)；10.0V → 补偿=1.26 (多加26% PWM)
+    //
+    // 注意：loadVoltage_V 在首轮 loop 前已被 ina219_init() + inaDataUpdate() 初始化，
+    //       此后每 10 秒在 oledInfoUpdate() 中刷新一次。
+    float voltage_clamped = constrain(loadVoltage_V, NAV_MIN_VOLTAGE, NAV_REF_VOLTAGE);
+    float voltage_compensation = NAV_REF_VOLTAGE / voltage_clamped;
+    // 补偿系数范围：1.0 (满电 12.6V) ~ 1.4 (低至 9.0V)
+    float dynamic_pwm_per_ms = nav_pwm_per_ms * voltage_compensation;
+
+    float left_pwm  = left_speed  * dynamic_pwm_per_ms;
+    float right_pwm = right_speed * dynamic_pwm_per_ms;
 
     // PWM限幅
     left_pwm = constrain(left_pwm, -nav_max_pwm, nav_max_pwm);

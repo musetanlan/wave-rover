@@ -69,7 +69,7 @@ float lt_eop_xy_max      = 0.5f;    // EOP 超过此值不注入导航 (0=不过
 
 // 基于坐标差分的航向计算（替代不可靠的 LinkTrack 陀螺仪 yaw）
 float lt_heading_from_pos      = 0.0f;   // 由坐标差分计算的航向角 (rad)
-bool  lt_use_pos_heading       = true;   // true=使用坐标差分航向, false=使用LinkTrack yaw
+bool  lt_use_pos_heading       = false;  // true=使用坐标差分航向, false=使用LinkTrack yaw
 float lt_pos_heading_min_dist  = 0.02f;  // 最小位移阈值 (m)，低于此值保持上次航向
 
 // ==================== 内部解析状态 ====================
@@ -162,6 +162,9 @@ void initLinkTrack() {
 
   // 使用 LinkTrack 提供的位置和航向，禁用编码器里程计自动覆盖
   nav_use_auto_odometry = false;
+
+  // 重置反馈节流间隔，确保 web 端每秒收到位置更新
+  feedbackFlowExtraDelay = 0;
 
   if (InfoPrint >= 1) {
     Serial.print("[LinkTrack] UART init: RX=GPIO3, Baud=");
