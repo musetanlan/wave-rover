@@ -2,6 +2,12 @@
 // 0.91inch OLED
 bool screenDefaultMode = true;
 
+// 外部变量声明
+extern float lt_pos_x;
+extern float lt_pos_y;
+extern float lt_yaw;
+extern float loadVoltage_V;
+
 unsigned long currentTimeMillis = millis();
 unsigned long lastTimeMillis = millis();
 
@@ -53,7 +59,7 @@ void oled_update() {
 // dev info update on oled.
 void oledInfoUpdate() {
   currentTimeMillis = millis();
-  if (currentTimeMillis - lastTimeMillis > 10000) {
+  if (currentTimeMillis - lastTimeMillis > 500) {
     inaDataUpdate();
     lastTimeMillis = currentTimeMillis;
   } else {
@@ -62,10 +68,13 @@ void oledInfoUpdate() {
   if (!screenDefaultMode) {
     return;
   }
-  // inaDataUpdate();
-  screenLine_3 = "V:"+String(loadVoltage_V);
+  // 去除ST行
+  screenLine_1 = "";
+  // 位置坐标（第三行）
+  screenLine_2 = "X:" + String(lt_pos_x, 2) + " Y:" + String(lt_pos_y, 2);
+  // 电压+航向角（第四行）
+  screenLine_3 = "V:" + String(loadVoltage_V, 1) + "V Y:" + String(lt_yaw, 1) + (char)0xF7;
   oled_update();
-  
 }
 
 // oled ctrl.

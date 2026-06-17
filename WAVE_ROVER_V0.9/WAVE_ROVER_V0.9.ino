@@ -236,6 +236,9 @@ void setup() {
   if(InfoPrint == 1){Serial.println("Application initialization settings.");}
   createMission("boot", "these cmds run automatically at boot.");
   missionPlay("boot", 1);
+
+  // 确保 boot 任务不会遗留过大的反馈节流延迟
+  feedbackFlowExtraDelay = 0;
 }
 
 
