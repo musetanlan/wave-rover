@@ -385,6 +385,23 @@ const char index_html[] PROGMEM = R"rawliteral(
                     <button class="small-btn" onclick="navStop();">停止</button>
                     <button class="small-btn" onclick="navResetOdom();">归零</button>
                 </div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:1px;margin-top:8px;">
+                  <div style="display:flex;gap:1px;">
+                    <button class="small-btn" style="width:42px;height:32px;font-size:11px;padding:0;" onmousedown="movtionButton(0.3,0.5);" onmouseup="movtionButton(0,0);" ontouchstart="movtionButton(0.3,0.5);" ontouchend="movtionButton(0,0);">↖</button>
+                    <button class="small-btn" style="width:42px;height:32px;font-size:11px;padding:0;" onmousedown="movtionButton(0.5,0.5);" onmouseup="movtionButton(0,0);" ontouchstart="movtionButton(0.5,0.5);" ontouchend="movtionButton(0,0);">↑</button>
+                    <button class="small-btn" style="width:42px;height:32px;font-size:11px;padding:0;" onmousedown="movtionButton(0.5,0.3);" onmouseup="movtionButton(0,0);" ontouchstart="movtionButton(0.5,0.3);" ontouchend="movtionButton(0,0);">↗</button>
+                  </div>
+                  <div style="display:flex;gap:1px;">
+                    <button class="small-btn" style="width:42px;height:32px;font-size:11px;padding:0;" onmousedown="movtionButton(-0.5,0.5);" onmouseup="movtionButton(0,0);" ontouchstart="movtionButton(-0.5,0.5);" ontouchend="movtionButton(0,0);">←</button>
+                    <button class="small-btn" style="width:42px;height:32px;font-size:11px;font-weight:700;padding:0;" onmousedown="movtionButton(0,0);" ontouchstart="movtionButton(0,0);">■</button>
+                    <button class="small-btn" style="width:42px;height:32px;font-size:11px;padding:0;" onmousedown="movtionButton(0.5,-0.5);" onmouseup="movtionButton(0,0);" ontouchstart="movtionButton(0.5,-0.5);" ontouchend="movtionButton(0,0);">→</button>
+                  </div>
+                  <div style="display:flex;gap:1px;">
+                    <button class="small-btn" style="width:42px;height:32px;font-size:11px;padding:0;" onmousedown="movtionButton(-0.3,-0.5);" onmouseup="movtionButton(0,0);" ontouchstart="movtionButton(-0.3,-0.5);" ontouchend="movtionButton(0,0);">↙</button>
+                    <button class="small-btn" style="width:42px;height:32px;font-size:11px;padding:0;" onmousedown="movtionButton(-0.5,-0.5);" onmouseup="movtionButton(0,0);" ontouchstart="movtionButton(-0.5,-0.5);" ontouchend="movtionButton(0,0);">↓</button>
+                    <button class="small-btn" style="width:42px;height:32px;font-size:11px;padding:0;" onmousedown="movtionButton(-0.5,-0.3);" onmouseup="movtionButton(0,0);" ontouchstart="movtionButton(-0.5,-0.3);" ontouchend="movtionButton(0,0);">↘</button>
+                  </div>
+                </div>
                 <div class="info-box num-box-sma" style="margin-top:20px; padding: 16px 20%;">
                     <div>
                         <span class="num-color sma-num" id="navStatus">待命</span>

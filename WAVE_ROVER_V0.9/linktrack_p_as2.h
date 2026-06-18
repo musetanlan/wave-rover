@@ -70,19 +70,21 @@ bool  lt_auto_nav_update = true;    // 是否自动调用 nav_update_position()
 float lt_eop_xy_max      = 0.5f;    // EOP 超过此值不注入导航 (0=不过滤)
 
 // 基于坐标差分的航向计算（替代不可靠的 LinkTrack 陀螺仪 yaw）
+// 混合策略: 移动时用3帧UWB坐标差分(不受电机磁场干扰), 静止时冻结航向
 float lt_heading_from_pos      = 0.0f;   // 由坐标差分计算的航向角 (rad)
-bool  lt_use_pos_heading       = false;  // true=使用坐标差分航向, false=使用LinkTrack yaw
-float lt_pos_heading_min_dist  = 0.02f;  // 最小位移阈值 (m)，低于此值保持上次航向
+bool  lt_use_pos_heading       = true;   // true=使用混合航向(UWB+IMU), false=纯IMU yaw
+float lt_pos_heading_min_dist  = 0.05f;  // 最小位移阈值 (m)，低于此值保持上次航向
 
 // ==================== 内部解析状态 ====================
 static uint8_t lt_rx_buf[LINKTRACK_FRAME_LEN];
 static uint8_t lt_rx_idx = 0;
 static bool    lt_synced = false;
 
-// 坐标差分航向计算 —— 追踪前一帧坐标
-static float lt_prev_x = 0.0f;
-static float lt_prev_y = 0.0f;
-static bool  lt_prev_valid = false;
+// 坐标差分航向计算 —— 3帧位置历史，滑动窗口
+static float lt_hx[3] = {0.0f, 0.0f, 0.0f};
+static float lt_hy[3] = {0.0f, 0.0f, 0.0f};
+static int   lt_h_count = 0;    // 历史帧数 (0..3)
+static bool  lt_h_inited = false;
 
 // ==================== 辅助函数 ====================
 
@@ -126,31 +128,53 @@ static bool lt_verify_checksum(const uint8_t *data, uint8_t length) {
 // ==================== 核心函数 ====================
 
 /**
- * 根据连续两帧坐标的位移向量计算航向角
+ * 3帧坐标差分航向 (混合策略)
  *
- * - 第一帧：记录坐标，返回当前已知航向
- * - 位移 >= lt_pos_heading_min_dist：计算 atan2(dy, dx) 更新航向
- * - 位移 < 阈值（静止/微动）：保持上次航向不变，避免噪声
+ * 维护最近3帧UWB位置，从2个位移向量计算航向：
+ *   - 有多对位移 >= min_dist（移动中）→ 圆平均 → UWB航向（不受电机磁场干扰）
+ *   - 无足够位移（静止/微动/原地旋转）→ 冻结航向不变
+ *     （原地旋转时电机磁场干扰IMU，UWB也测不到位移，冻结最安全）
  *
  * 返回: 航向角 (rad), 0 = +X 轴方向
  */
 float lt_calc_heading_from_pos(float x, float y) {
-    if (!lt_prev_valid) {
-        lt_prev_x = x;
-        lt_prev_y = y;
-        lt_prev_valid = true;
-        lt_heading_from_pos = nav_current_heading;
+    // 首次调用：全部初始化为当前坐标，航向用IMU（此时电机未转，IMU可信）
+    if (!lt_h_inited) {
+        lt_hx[0] = lt_hx[1] = lt_hx[2] = x;
+        lt_hy[0] = lt_hy[1] = lt_hy[2] = y;
+        lt_h_count = 3;
+        lt_h_inited = true;
+        lt_heading_from_pos = icm_yaw * M_PI / 180.0f;
         return lt_heading_from_pos;
     }
-    float dx = x - lt_prev_x;
-    float dy = y - lt_prev_y;
-    float dist = sqrtf(dx * dx + dy * dy);
-    if (dist >= lt_pos_heading_min_dist) {
-        lt_heading_from_pos = atan2f(dy, dx);
+
+    // 滑动窗口左移，新坐标入 [2]
+    lt_hx[0] = lt_hx[1]; lt_hy[0] = lt_hy[1];
+    lt_hx[1] = lt_hx[2]; lt_hy[1] = lt_hy[2];
+    lt_hx[2] = x;         lt_hy[2] = y;
+
+    // 计算2个位移向量的航向角，圆平均合并有效者
+    float sum_sin = 0.0f, sum_cos = 0.0f;
+    int   valid_pairs = 0;
+
+    for (int i = 0; i < 2; i++) {
+        float dx = lt_hx[i + 1] - lt_hx[i];
+        float dy = lt_hy[i + 1] - lt_hy[i];
+        float dist = sqrtf(dx * dx + dy * dy);
+        if (dist >= lt_pos_heading_min_dist) {
+            float h = atan2f(dy, dx);
+            sum_sin += sinf(h);
+            sum_cos += cosf(h);
+            valid_pairs++;
+        }
     }
-    // 位移太小 → 保持 lt_heading_from_pos 上次值不变
-    lt_prev_x = x;
-    lt_prev_y = y;
+
+    if (valid_pairs > 0) {
+        // 移动中 → UWB 坐标差分航向（不受电机磁场干扰）
+        lt_heading_from_pos = atan2f(sum_sin, sum_cos);
+    }
+    // 静止/微动/原地旋转 → 冻结航向，不更新
+
     return lt_heading_from_pos;
 }
 
