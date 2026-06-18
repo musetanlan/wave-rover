@@ -85,6 +85,7 @@ static float lt_hx[3] = {0.0f, 0.0f, 0.0f};
 static float lt_hy[3] = {0.0f, 0.0f, 0.0f};
 static int   lt_h_count = 0;    // 历史帧数 (0..3)
 static bool  lt_h_inited = false;
+static float lt_yaw_at_update = 0.0f;  // icm_yaw(度) 在上次UWB航向更新时的快照，用于gyro delta
 
 // ==================== 辅助函数 ====================
 
@@ -128,23 +129,25 @@ static bool lt_verify_checksum(const uint8_t *data, uint8_t length) {
 // ==================== 核心函数 ====================
 
 /**
- * 3帧坐标差分航向 (混合策略)
+ * 3帧坐标差分航向 + gyro delta 跟踪 (混合策略)
  *
  * 维护最近3帧UWB位置，从2个位移向量计算航向：
- *   - 有多对位移 >= min_dist（移动中）→ 圆平均 → UWB航向（不受电机磁场干扰）
- *   - 无足够位移（静止/微动/原地旋转）→ 冻结航向不变
- *     （原地旋转时电机磁场干扰IMU，UWB也测不到位移，冻结最安全）
+ *   - 移动中（位移 >= min_dist）→ 圆平均 → UWB航向（不受电机磁场干扰）
+ *   - 静止/原地旋转 → 上次UWB航向 + gyro delta（gyro免疫磁场，短时delta可信）
  *
  * 返回: 航向角 (rad), 0 = +X 轴方向
  */
 float lt_calc_heading_from_pos(float x, float y) {
+    float imu_yaw_rad = icm_yaw * M_PI / 180.0f;
+
     // 首次调用：全部初始化为当前坐标，航向用IMU（此时电机未转，IMU可信）
     if (!lt_h_inited) {
         lt_hx[0] = lt_hx[1] = lt_hx[2] = x;
         lt_hy[0] = lt_hy[1] = lt_hy[2] = y;
         lt_h_count = 3;
         lt_h_inited = true;
-        lt_heading_from_pos = icm_yaw * M_PI / 180.0f;
+        lt_heading_from_pos = imu_yaw_rad;
+        lt_yaw_at_update = icm_yaw;
         return lt_heading_from_pos;
     }
 
@@ -172,8 +175,14 @@ float lt_calc_heading_from_pos(float x, float y) {
     if (valid_pairs > 0) {
         // 移动中 → UWB 坐标差分航向（不受电机磁场干扰）
         lt_heading_from_pos = atan2f(sum_sin, sum_cos);
+        lt_yaw_at_update = icm_yaw;
+    } else {
+        // 静止/原地旋转 → gyro delta 跟踪（gyro 免疫磁场，短时可信）
+        float ref_yaw_rad = lt_yaw_at_update * M_PI / 180.0f;
+        float delta = nav_wrapAngle(imu_yaw_rad - ref_yaw_rad);
+        lt_heading_from_pos = nav_wrapAngle(lt_heading_from_pos + delta);
+        lt_yaw_at_update = icm_yaw;
     }
-    // 静止/微动/原地旋转 → 冻结航向，不更新
 
     return lt_heading_from_pos;
 }
