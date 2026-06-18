@@ -57,10 +57,17 @@ void imuInit()
     // delay(1000);
     // calibrate(10000, &offset_x, &offset_y, &offset_z);
     // calibrateMagn();
-    q0 = 1.0f;  
-    q1 = 0.0f;
-    q2 = 0.0f;
-    q3 = 0.0f;
+
+    // 用磁力计读取初始朝向，初始化四元数 yaw，消除 AHRS 5-10 秒收敛延迟
+    {
+      int16_t mag_x, mag_y, mag_z;
+      magnetometer_.getData(&mag_x, &mag_y, &mag_z);
+      float init_yaw = atan2f((float)(mag_y - offset_y), (float)(mag_x - offset_x));
+      q0 = cosf(init_yaw * 0.5f);
+      q1 = 0.0f;
+      q2 = 0.0f;
+      q3 = sinf(init_yaw * 0.5f);
+    }
 }
 
 void imuDataGet(EulerAngles *pstAngles, 
@@ -127,7 +134,7 @@ void imuAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az, f
   float norm;
   float hx, hy, hz, bx, bz;
   float vx, vy, vz, wx, wy, wz;
-  float exInt = 0.0, eyInt = 0.0, ezInt = 0.0;
+  static float exInt = 0.0, eyInt = 0.0, ezInt = 0.0;
   float ex, ey, ez, halfT = 0.024f; /*half the sample period*/
 
   float q0q0 = q0 * q0;
@@ -174,8 +181,16 @@ void imuAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az, f
   if(ex != 0.0f && ey != 0.0f && ez != 0.0f)
   {
     exInt = exInt + ex * Ki * halfT;
-    eyInt = eyInt + ey * Ki * halfT;  
+    eyInt = eyInt + ey * Ki * halfT;
     ezInt = ezInt + ez * Ki * halfT;
+
+    // 防积分饱和 (anti-windup): ±0.3 rad ≈ ±17°
+    if (exInt >  0.3f) exInt =  0.3f;
+    if (exInt < -0.3f) exInt = -0.3f;
+    if (eyInt >  0.3f) eyInt =  0.3f;
+    if (eyInt < -0.3f) eyInt = -0.3f;
+    if (ezInt >  0.3f) ezInt =  0.3f;
+    if (ezInt < -0.3f) ezInt = -0.3f;
 
     gx = gx + Kp * ex + exInt;
     gy = gy + Kp * ey + eyInt;

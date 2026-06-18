@@ -303,7 +303,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                             </div>
                             <div>
                                 <span class="num-color mid-num" id="ltYaw">--</span>
-                                <span>UWB Yaw(°)</span>
+                                <span>Yaw(°)</span>
                             </div>
                             <div>
                                 <span class="num-color mid-num" id="ltEopX">--</span>
