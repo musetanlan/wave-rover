@@ -157,8 +157,8 @@ float lt_calc_heading_from_pos(float x, float y) {
  * 在 setup() 中调用一次
  */
 void initLinkTrack() {
-  Serial.flush();
-  Serial.updateBaudRate(LINKTRACK_BAUDRATE);
+  Serial.end();
+  Serial.begin(LINKTRACK_BAUDRATE);
 
   // 使用 LinkTrack 提供的位置和航向，禁用编码器里程计自动覆盖
   nav_use_auto_odometry = false;
