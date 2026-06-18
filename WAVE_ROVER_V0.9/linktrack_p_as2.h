@@ -29,6 +29,8 @@
 #include <Arduino.h>
 #include "nav_pid_ctrl.h"
 
+extern double icm_yaw;  // IMU 偏航角（度），Madgwick AHRS 融合输出
+
 // ==================== UART 配置 ====================
 // Serial (UART0): RX=GPIO3 ← LinkTrack TX, TX=GPIO1 → LinkTrack RX
 #define LINKTRACK_BAUDRATE  921600
@@ -251,7 +253,7 @@ void updateLinkTrack() {
           if (eop_ok) {
             float heading_rad = lt_use_pos_heading
                 ? lt_calc_heading_from_pos(lt_pos_x, lt_pos_y)
-                : (lt_yaw * M_PI / 180.0f);
+                : (icm_yaw * M_PI / 180.0f);
             nav_update_position(lt_pos_x, lt_pos_y, heading_rad);
           }
         }

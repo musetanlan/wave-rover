@@ -5,7 +5,7 @@ bool screenDefaultMode = true;
 // 外部变量声明
 extern float lt_pos_x;
 extern float lt_pos_y;
-extern float lt_yaw;
+extern double icm_yaw;
 extern float loadVoltage_V;
 
 unsigned long currentTimeMillis = millis();
@@ -73,7 +73,7 @@ void oledInfoUpdate() {
   // 位置坐标（第三行）
   screenLine_2 = "X:" + String(lt_pos_x, 2) + " Y:" + String(lt_pos_y, 2);
   // 电压+航向角（第四行）
-  screenLine_3 = "V:" + String(loadVoltage_V, 1) + "V Y:" + String(lt_yaw, 1) + (char)0xF7;
+  screenLine_3 = "V:" + String(loadVoltage_V, 1) + "V Y:" + String(icm_yaw, 1) + (char)0xF7;
   oled_update();
 }
 
