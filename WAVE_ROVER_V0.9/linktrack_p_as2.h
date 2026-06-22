@@ -200,11 +200,6 @@ void initLinkTrack() {
 
   // 重置反馈节流间隔，确保 web 端每秒收到位置更新
   feedbackFlowExtraDelay = 0;
-
-  if (InfoPrint >= 1) {
-    Serial.print("[LinkTrack] UART init: RX=GPIO3, Baud=");
-    Serial.println(LINKTRACK_BAUDRATE);
-  }
 }
 
 /**
@@ -291,24 +286,6 @@ void updateLinkTrack() {
           }
         }
 
-        // 调试输出（每 50 帧一次）
-        if (InfoPrint >= 1 && (lt_frame_count % 50 == 0)) {
-          Serial.print("[LK] #");
-          Serial.print(lt_frame_count);
-          Serial.print(" pos=(");
-          Serial.print(lt_pos_x, 3);
-          Serial.print(", ");
-          Serial.print(lt_pos_y, 3);
-          Serial.print(") yaw=");
-          Serial.print(lt_yaw, 1);
-          Serial.print("° eop=(");
-          Serial.print(lt_eop_x, 2);
-          Serial.print(", ");
-          Serial.print(lt_eop_y, 2);
-          Serial.print(") err=");
-          Serial.print(lt_error_count);
-          Serial.println();
-        }
       }
     }
   }

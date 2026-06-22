@@ -244,7 +244,6 @@ void setup() {
 
 void loop() {
   updateLinkTrack();   // 接收并解析 LinkTrack UWB 定位数据
-  serialCtrl();
   server.handleClient();
 
   // read and compute the info of joints.

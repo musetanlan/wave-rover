@@ -101,9 +101,6 @@ static const float NAV_HEAD_ALPHA = 0.15f;  // 航向EMA系数 (τ≈0.57s, 3τ=
 static const float NAV_HERR_ALPHA = 0.25f;  // 航向误差EMA系数 (τ≈0.3s, 3τ=0.9s)
 static const float NAV_HERR_DEAD  = 0.05f;  // 航向死区 (rad, ≈2.9°)，小于此值不修正
 
-// 反向行驶状态（目标在后方>90°时倒车代替绕大圈）
-static bool nav_reverse_active = false;
-
 // ----- 导航控制标志：当导航激活时，阻止普通速度命令生效 -----
 // 这个变量定义在movtion_module.h中，这里通过extern引用
 // 实际在nav_pid_compute中直接调用leftCtrl/rightCtrl绕过setGoalSpeed
@@ -140,7 +137,6 @@ void nav_set_target(float x, float y) {
     nav_filt_heading = 0.0f;
     nav_filt_init = false;
     nav_head_err_filt = 0.0f;
-    nav_reverse_active = false;
 
     // 重置定时器，确保立即开始计算
     nav_last_update = 0;
@@ -297,23 +293,9 @@ void nav_pid_compute() {
         return;
     }
 
-    // ====== 第二步：计算航向误差（反向优化 + 死区 + EMA）======
+    // ====== 第二步：计算航向误差（使用滤波后位置和航向 + 死区 + EMA）======
     float bearing_to_target = atan2(dy, dx);
     float heading_error = nav_wrapAngle(bearing_to_target - nav_filt_heading);
-
-    // 反向优化：当目标在后方(|heading_error|>90°)时，折叠航向误差到[-90°,90°]
-    // 并反转线速度方向，使小车直接倒车而非向前绕大圈
-    bool should_reverse = (fabs(heading_error) > M_PI / 2.0f);
-    if (should_reverse != nav_reverse_active) {
-        // 反向状态切换时重置航向PID积分和滤波，避免瞬态跳变
-        nav_head_integral = 0.0f;
-        nav_head_err_filt = 0.0f;
-        nav_reverse_active = should_reverse;
-    }
-    if (nav_reverse_active) {
-        // 将 heading_error 折叠到 [-π/2, π/2] 区间
-        heading_error += (heading_error > 0.0f) ? -M_PI : M_PI;
-    }
 
     // 死区：航向误差<阈值时不修正，避免噪声导致方向PID来回摆头
     if (fabs(heading_error) < NAV_HERR_DEAD) {
@@ -345,11 +327,6 @@ void nav_pid_compute() {
     // 接近目标时减速：距离1.0m内开始线性降速，最低降至20%
     float slow_factor = constrain(distance_to_target / 1.0, 0.2, 1.0);
     linear_speed *= slow_factor;
-
-    // 反向行驶：目标在后方时线速度取反，倒车直行而非向前绕大圈
-    if (nav_reverse_active) {
-        linear_speed = -linear_speed;
-    }
 
     // ====== 第四步：航向PID → 角速度（使用滤波后航向误差）======
     nav_head_integral += nav_head_err_filt * dt;
@@ -443,7 +420,6 @@ void nav_pid_compute() {
             Serial.print(","); Serial.print(nav_target_y);
             Serial.print(") 距离:"); Serial.print(distance_to_target);
             Serial.print(" 航向差:"); Serial.print(nav_head_err_filt);
-            Serial.print(nav_reverse_active ? " [倒车]" : " [前进]");
             Serial.print(" 线速:"); Serial.print(linear_speed);
             Serial.print(" 角速:"); Serial.print(angular_speed);
             Serial.print(" L:"); Serial.print(left_pwm);
@@ -459,7 +435,6 @@ void nav_stop() {
     nav_head_integral = 0.0;
     nav_dist_prev_error = 0.0;
     nav_head_prev_error = 0.0;
-    nav_reverse_active = false;
     setGoalSpeed(0.0, 0.0);
     leftCtrl(0);
     rightCtrl(0);
