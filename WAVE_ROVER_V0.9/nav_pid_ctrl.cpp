@@ -58,7 +58,7 @@ float nav_ki_head = 10.0;
 float nav_kd_head = 0.0;
 
 // ----- 到达阈值 -----
-float nav_arrival_dist = 0.05;  // 5cm
+float nav_arrival_dist = 0.5;   // 0.5m（定位动态误差较大，放宽停车条件）
 
 // ----- 速度与输出限制 -----
 float nav_base_speed = 0.3;     // 最大线速度 m/s
@@ -86,6 +86,23 @@ static float nav_head_prev_error = 0.0;
 // ----- 定时控制 -----
 static unsigned long nav_last_update = 0;
 static const unsigned long nav_update_interval = 100;  // 100ms
+
+// ----- 位置/航向低通滤波器（抑制UWB ±0.25m定位噪声）-----
+// 在 nav_pid_compute() 中对送入PID的位置和航向做EMA滤波，阻隔噪声后再计算控制量
+static float nav_filt_x        = 0.0f;   // 滤波后X坐标 (m)
+static float nav_filt_y        = 0.0f;   // 滤波后Y坐标 (m)
+static float nav_filt_heading  = 0.0f;   // 滤波后航向 (rad)
+static bool  nav_filt_init     = false;  // 滤波器是否已用真实值初始化
+static float nav_head_err_filt = 0.0f;   // 滤波后航向误差 (rad)
+
+// 滤波参数（100ms控制周期下校准）
+static const float NAV_POS_ALPHA  = 0.20f;  // 位置EMA系数 (τ≈0.4s, 3τ=1.2s)
+static const float NAV_HEAD_ALPHA = 0.15f;  // 航向EMA系数 (τ≈0.57s, 3τ=1.7s)
+static const float NAV_HERR_ALPHA = 0.25f;  // 航向误差EMA系数 (τ≈0.3s, 3τ=0.9s)
+static const float NAV_HERR_DEAD  = 0.05f;  // 航向死区 (rad, ≈2.9°)，小于此值不修正
+
+// 反向行驶状态（目标在后方>90°时倒车代替绕大圈）
+static bool nav_reverse_active = false;
 
 // ----- 导航控制标志：当导航激活时，阻止普通速度命令生效 -----
 // 这个变量定义在movtion_module.h中，这里通过extern引用
@@ -116,6 +133,14 @@ void nav_set_target(float x, float y) {
     nav_dist_prev_error = 0.0;
     nav_head_integral = 0.0;
     nav_head_prev_error = 0.0;
+
+    // 重置位置/航向滤波器，避免旧目标的历史值污染新目标
+    nav_filt_x = 0.0f;
+    nav_filt_y = 0.0f;
+    nav_filt_heading = 0.0f;
+    nav_filt_init = false;
+    nav_head_err_filt = 0.0f;
+    nav_reverse_active = false;
 
     // 重置定时器，确保立即开始计算
     nav_last_update = 0;
@@ -233,9 +258,27 @@ void nav_pid_compute() {
 
     float dt = nav_update_interval / 1000.0;  // 控制周期转换为秒
 
-    // ====== 第一步：计算距离误差 ======
-    float dx = nav_target_x - nav_current_x;
-    float dy = nav_target_y - nav_current_y;
+    // ====== 位置/航向低通滤波器（抑制UWB ±0.25m定位噪声）======
+    // 首次执行时用原始值初始化，避免零值瞬态
+    if (!nav_filt_init) {
+        nav_filt_x = nav_current_x;
+        nav_filt_y = nav_current_y;
+        nav_filt_heading = nav_current_heading;
+        nav_head_err_filt = 0.0f;
+        nav_filt_init = true;
+    }
+
+    // EMA低通滤波：位置（α=0.20, τ≈0.4s @100ms）
+    nav_filt_x += NAV_POS_ALPHA * (nav_current_x - nav_filt_x);
+    nav_filt_y += NAV_POS_ALPHA * (nav_current_y - nav_filt_y);
+
+    // EMA低通滤波：航向（圆EMA，处理角度环绕）
+    float head_delta = nav_wrapAngle(nav_current_heading - nav_filt_heading);
+    nav_filt_heading = nav_wrapAngle(nav_filt_heading + NAV_HEAD_ALPHA * head_delta);
+
+    // ====== 第一步：计算距离误差（使用滤波后位置）======
+    float dx = nav_target_x - nav_filt_x;
+    float dy = nav_target_y - nav_filt_y;
     float distance_to_target = sqrt(dx * dx + dy * dy);
     nav_distance_to_target_last = distance_to_target;
 
@@ -248,17 +291,37 @@ void nav_pid_compute() {
         rightCtrl(0);
         if (InfoPrint == 1) {
             Serial.print("[NAV] 已到达目标！最终位置: (");
-            Serial.print(nav_current_x); Serial.print(", ");
-            Serial.print(nav_current_y); Serial.println(")");
+            Serial.print(nav_filt_x); Serial.print(", ");
+            Serial.print(nav_filt_y); Serial.println(")");
         }
         return;
     }
 
-    // ====== 第二步：计算航向误差 ======
-    // 从当前位置指向目标的方向角(世界坐标系)
+    // ====== 第二步：计算航向误差（反向优化 + 死区 + EMA）======
     float bearing_to_target = atan2(dy, dx);
-    // 航向误差 = 目标方向 - 当前车头朝向，归一化到[-PI, PI]
-    float heading_error = nav_wrapAngle(bearing_to_target - nav_current_heading);
+    float heading_error = nav_wrapAngle(bearing_to_target - nav_filt_heading);
+
+    // 反向优化：当目标在后方(|heading_error|>90°)时，折叠航向误差到[-90°,90°]
+    // 并反转线速度方向，使小车直接倒车而非向前绕大圈
+    bool should_reverse = (fabs(heading_error) > M_PI / 2.0f);
+    if (should_reverse != nav_reverse_active) {
+        // 反向状态切换时重置航向PID积分和滤波，避免瞬态跳变
+        nav_head_integral = 0.0f;
+        nav_head_err_filt = 0.0f;
+        nav_reverse_active = should_reverse;
+    }
+    if (nav_reverse_active) {
+        // 将 heading_error 折叠到 [-π/2, π/2] 区间
+        heading_error += (heading_error > 0.0f) ? -M_PI : M_PI;
+    }
+
+    // 死区：航向误差<阈值时不修正，避免噪声导致方向PID来回摆头
+    if (fabs(heading_error) < NAV_HERR_DEAD) {
+        heading_error = 0.0f;
+    }
+
+    // EMA低通滤波：航向误差（α=0.25, τ≈0.3s），平滑死区边界过渡
+    nav_head_err_filt += NAV_HERR_ALPHA * (heading_error - nav_head_err_filt);
 
     // ====== 第三步：距离PID → 线速度 ======
     float dist_error = distance_to_target;
@@ -279,21 +342,26 @@ void nav_pid_compute() {
     if (linear_speed > nav_base_speed) linear_speed = nav_base_speed;
     if (linear_speed < -nav_base_speed) linear_speed = -nav_base_speed;
 
-    // 接近目标时减速：距离0.5m内开始线性降速，最低降至20%
-    float slow_factor = constrain(distance_to_target / 0.5, 0.2, 1.0);
+    // 接近目标时减速：距离1.0m内开始线性降速，最低降至20%
+    float slow_factor = constrain(distance_to_target / 1.0, 0.2, 1.0);
     linear_speed *= slow_factor;
 
-    // ====== 第四步：航向PID → 角速度 ======
-    nav_head_integral += heading_error * dt;
+    // 反向行驶：目标在后方时线速度取反，倒车直行而非向前绕大圈
+    if (nav_reverse_active) {
+        linear_speed = -linear_speed;
+    }
+
+    // ====== 第四步：航向PID → 角速度（使用滤波后航向误差）======
+    nav_head_integral += nav_head_err_filt * dt;
 
     // 积分限幅
     if (nav_head_integral > 1.0) nav_head_integral = 1.0;
     if (nav_head_integral < -1.0) nav_head_integral = -1.0;
 
-    float head_derivative = (heading_error - nav_head_prev_error) / dt;
-    nav_head_prev_error = heading_error;
+    float head_derivative = (nav_head_err_filt - nav_head_prev_error) / dt;
+    nav_head_prev_error = nav_head_err_filt;
 
-    float angular_speed = nav_kp_head * heading_error
+    float angular_speed = nav_kp_head * nav_head_err_filt
                         + nav_ki_head * nav_head_integral
                         + nav_kd_head * head_derivative;
 
@@ -366,13 +434,16 @@ void nav_pid_compute() {
         static unsigned long last_debug_print = 0;
         if (now - last_debug_print >= 500) {  // 每500ms打印一次
             last_debug_print = now;
-            Serial.print("[NAV] 当前:("); Serial.print(nav_current_x);
+            Serial.print("[NAV] 原始:("); Serial.print(nav_current_x);
             Serial.print(","); Serial.print(nav_current_y);
-            Serial.print(") 朝向:"); Serial.print(nav_current_heading);
+            Serial.print(") 滤波:("); Serial.print(nav_filt_x);
+            Serial.print(","); Serial.print(nav_filt_y);
+            Serial.print(") 朝向:"); Serial.print(nav_filt_heading);
             Serial.print(" 目标:("); Serial.print(nav_target_x);
             Serial.print(","); Serial.print(nav_target_y);
             Serial.print(") 距离:"); Serial.print(distance_to_target);
-            Serial.print(" 航向差:"); Serial.print(heading_error);
+            Serial.print(" 航向差:"); Serial.print(nav_head_err_filt);
+            Serial.print(nav_reverse_active ? " [倒车]" : " [前进]");
             Serial.print(" 线速:"); Serial.print(linear_speed);
             Serial.print(" 角速:"); Serial.print(angular_speed);
             Serial.print(" L:"); Serial.print(left_pwm);
@@ -388,6 +459,7 @@ void nav_stop() {
     nav_head_integral = 0.0;
     nav_dist_prev_error = 0.0;
     nav_head_prev_error = 0.0;
+    nav_reverse_active = false;
     setGoalSpeed(0.0, 0.0);
     leftCtrl(0);
     rightCtrl(0);
